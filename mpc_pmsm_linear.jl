@@ -133,17 +133,23 @@ function control_action(CTRL::MPControl, Ω_star::Float64, Ω::Float64, iQ::Floa
     @constraint(model, x[4:5, 1:CTRL.N] .>= -reshape(CTRL.u_max, 2, 1)) # Assuming symmetry in constraints
     # iD constraint in last 100 of N steps
     # @constraint(model, x[1, 10:CTRL.N] .<= 50.0) 
-    # T_L constraint
-    @constraint(model, x[6, 1:CTRL.N+1] .<= 0.01)
-    @constraint(model, x[6, 1:CTRL.N+1] .>= -0.01)
+
+    # # Output and state target constraints
+    # # iD constraint in last 50 of N steps
+    # @constraint(model, x[1, CTRL.N-50 :CTRL.N] .<= 5.0) 
+    # @constraint(model, x[1, CTRL.N-50 :CTRL.N] .>= -5.0) 
+    # # Ω constraint in last 50 of N steps
+    # @constraint(model, x[3, CTRL.N-50 :CTRL.N] .<= Ω_star + 5.0)
+    # @constraint(model, x[3, CTRL.N-50 :CTRL.N] .>= Ω_star - 5.0)
+
 
 
     # Objective: Minimize cost over trajectory
-    @objective(model, Min,  sum( CTRL.Q[1,1] * (x[1, k])^2 +
-                                # CTRL.Q[2,2] * (x[2, k] - x[6,k] * CTRL.K_QL)^2 +
+    @objective(model, Min,  sum(CTRL.Q[1,1] * (x[1, k])^2 +
+                                CTRL.Q[2,2] * (x[2, k] - x[6,k] * CTRL.K_QL)^2 +
                                 CTRL.Q[3,3] * (x[3, k] - Ω_star)^2  for k in 1:CTRL.N+1 ) +
-                            sum( u[:, k]' * CTRL.R * u[:, k] for k in 1:CTRL.N)) +
-                            CTRL.F[1,1] * (x[3, CTRL.N+1] - Ω_star)^2  + CTRL.F[2,2] * (x[1, CTRL.N+1] - 0 )^2
+                                sum(CTRL.R[1,1] * (u[1, k])^2 + CTRL.R[2,2] * (u[2, k])^2 for k in 1:CTRL.N) +
+                            CTRL.F[1,1] * (x[3, CTRL.N+1] - Ω_star)^2  + CTRL.F[2,2] * (x[1, CTRL.N+1])^2)
 
     # Solve the optimization problem
     optimize!(model)
@@ -155,7 +161,7 @@ function control_action(CTRL::MPControl, Ω_star::Float64, Ω::Float64, iQ::Floa
     CTRL.u_pre = [uD, uQ]
 
     # Plot 
-    if t == 1.0
+    if t == 1.52
         ylabels = ["iD",
                "iQ",
                "speed",
@@ -165,20 +171,22 @@ function control_action(CTRL::MPControl, Ω_star::Float64, Ω::Float64, iQ::Floa
                 "ΔuD",
                 "ΔuQ"]
         plots = []
-        println("Plotting")
         for (index, ylabel) in enumerate(ylabels[1:6])
             trace = [value(x[index, k]) for k in 1:CTRL.N+1]
+            threshold = 1e-10
+            trace = [x > threshold ? x : 0 for x in trace]  # data less than threshold set to 0
+            # trace = [value(x[index, k]) for k in 1:10] # Prediction from t = 1.0 to t = 1.0 + 10*0.001 = 1.01
             p = plot( trace, xlabel="Time (s)", ylabel=ylabel, title="$ylabel vs Time", legend=false, linewidth=2)
             push!(plots, p)
         end
         for (index, ylabel) in enumerate(ylabels[7:8])
             trace = [value(u[index, k]) for k in 1:CTRL.N]
+            # trace = [value(u[index, k]) for k in 1:9]
             p = plot( trace, xlabel="Time (s)", ylabel=ylabel, title="$ylabel vs Time", legend=false, linewidth=2)
             push!(plots, p)
         end
-        plot(plots..., layout=(3, 3), size=(1600, 1600))
-        savefig("mpc_plots_sin.png")
-        println("Plotting Done")
+        plot_mpc = plot(plots..., layout=(3, 3), size=(1600, 1600))
+        savefig( plot_mpc, "plots/mpc_plots.svg")
     end
 
     return uD, uQ

@@ -2,9 +2,10 @@ include("MACHINE_SIMULATOR.jl")
 using JuMP
 using OSQP
 using LinearAlgebra
-using Plots
 using Printf
 using Ipopt
+using Plots
+
 # using PyPlot
 # pygui(true)
 
@@ -34,12 +35,22 @@ global ACM = The_AC_Machine(npp, IN, R, Ld, Lq, KE, Rreq, Js)
 # Nested_CRTL = NestedLoopsController(KP_i, KI_i, KP_v, KI_v, KP_id, KI_id)
 
 # # 2 - MPC Controller
+# Ω_star, T_L = (0.0, 0.0)
+# dt = 0.001 # Sampling time
+# N = 400 # Prediction horizon
+# Q1, Q2, Q3 = (10.0, 0.0, 100.0) # Q1 for iD; Q2 for iQ; Q3 for (Ω-Ω_star)
+# R1, R2 = (0.0, 0.0) # R1 for uD; R2 for uQ
+# F1, F2 = (200.0, 1.0) # F1 for final Ω； F2 for iD
+# uD_max, uQ_max = (200.0, 200.0)
+# MPC_CRTL = MPControl(dt, Ld, Lq, R, npp, KE, KE, Js, Ω_star, T_L,
+#     N, Q1, Q2, Q3, R1, R2, F1, F2,
+#     uD_max, uQ_max)
 Ω_star, T_L = (0.0, 0.0)
 dt = 0.001 # Sampling time
-N = 400 # Prediction horizon
-Q1, Q2, Q3 = (50.0, 0.0, 100.0) # Q1 for iD; Q2 for iQ; Q3 for Ω
+N = 200 # Prediction horizon
+Q1, Q2, Q3 = (1.0, 1.0, 400.0) # Q1 for iD; Q2 for iQ; Q3 for Ω
 R1, R2 = (1.0, 1.0) # R1 for uD; R2 for uQ
-F1, F2 = (400.0, 50.0) # F1 for final Ω； F2 for iD
+F1, F2 = (400.0, 0.0) # F1 for final Ω； F2 for iD
 uD_max, uQ_max = (100.0, 100.0)
 MPC_CRTL = MPControl(dt, Ld, Lq, R, npp, KE, KE, Js, Ω_star, T_L,
     N, Q1, Q2, Q3, R1, R2, F1, F2,

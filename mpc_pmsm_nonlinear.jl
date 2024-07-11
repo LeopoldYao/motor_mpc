@@ -153,22 +153,21 @@ function control_action(CTRL::MPControl, Ω_star::Float64, Ω::Float64, iQ::Floa
 
     # Output and state target constraints
     # iD constraint in last 50 of N steps
-    @constraint(model, x[1, CTRL.N-50 :CTRL.N] .<= 5.0) 
-    @constraint(model, x[1, CTRL.N-50 :CTRL.N] .>= -5.0) 
-    # Ω constraint in last 50 of N steps
-    @constraint(model, x[3, CTRL.N-50 :CTRL.N] .<= Ω_star + 5.0)
-    @constraint(model, x[3, CTRL.N-50 :CTRL.N] .>= Ω_star - 5.0)
+    # @constraint(model, x[1, CTRL.N-50 :CTRL.N] .<= 5.0) 
+    # @constraint(model, x[1, CTRL.N-50 :CTRL.N] .>= -5.0) 
+
 
 
 
     # Objective: Minimize cost over trajectory
     @NLobjective(model, Min,    sum(CTRL.Q[1,1] * (x[1, k])^2 + 
+                                    CTRL.Q[2,2] * (x[2, k] - x[6,k] * CTRL.K_QL)^2 +
                                     CTRL.Q[3,3] * (x[3, k] - Ω_star)^2 for k in 1:CTRL.N+1) +
                                 sum(CTRL.R[1,1] * (u[1, k])^2 + CTRL.R[2,2] * (u[2, k])^2 for k in 1:CTRL.N) +
                                 CTRL.F[1,1] * (x[3, CTRL.N+1] - Ω_star)^2 + CTRL.F[2,2] * (x[1, CTRL.N+1])^2)
     
     # Solve the optimization problem
-    set_optimizer_attribute(model, "max_iter", 100000)
+    # set_optimizer_attribute(model, "max_iter", 100000)
     optimize!(model)
 
     # Extract control action
@@ -178,7 +177,7 @@ function control_action(CTRL::MPControl, Ω_star::Float64, Ω::Float64, iQ::Floa
     CTRL.u_pre = [uD, uQ]
 
     # Plot 
-    if t == 1.0
+    if t == 1.52
         ylabels = ["iD",
                "iQ",
                "speed",
@@ -190,6 +189,8 @@ function control_action(CTRL::MPControl, Ω_star::Float64, Ω::Float64, iQ::Floa
         plots = []
         for (index, ylabel) in enumerate(ylabels[1:6])
             trace = [value(x[index, k]) for k in 1:CTRL.N+1]
+            threshold = 1e-10
+            trace = [x > threshold ? x : 0 for x in trace]  # data less than threshold set to 0
             # trace = [value(x[index, k]) for k in 1:10] # Prediction from t = 1.0 to t = 1.0 + 10*0.001 = 1.01
             p = plot( trace, xlabel="Time (s)", ylabel=ylabel, title="$ylabel vs Time", legend=false, linewidth=2)
             push!(plots, p)
@@ -200,9 +201,8 @@ function control_action(CTRL::MPControl, Ω_star::Float64, Ω::Float64, iQ::Floa
             p = plot( trace, xlabel="Time (s)", ylabel=ylabel, title="$ylabel vs Time", legend=false, linewidth=2)
             push!(plots, p)
         end
-        plot(plots..., layout=(3, 3), size=(1600, 1600))
-        # savefig("mpc_plots_short.png")
-        savefig("plots/mpc_plots.png")
+        plot_mpc = plot(plots..., layout=(3, 3), size=(1600, 1600))
+        savefig( plot_mpc, "plots/mpc_plots.svg")
     end
 
     # # print the control action

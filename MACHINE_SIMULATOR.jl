@@ -2,7 +2,6 @@ include("mpc_pmsm_nonlinear.jl") # choose the controller to use
 using LinearAlgebra
 using Plots
 using ProgressMeter
-using PyPlot
 
 mutable struct ACMachine
     # Name plate data
@@ -178,6 +177,7 @@ function ACMSimPyIncremental(MACHINE_TS, t0, TIME, ACM, CTRL)
         # OMEGA_r_mech_star = 100.0
         # 2. Change TLoad and Ω_star 
         # ACM.TLoad = t < 2 ? 0.0 : (t > 2 && t < 6 ? 3.0 : (t > 6 ? 0.0 : ACM.TLoad))
+        ACM.TLoad = 0.5
         OMEGA_r_mech_star = t < 1.5 ? 100.0 : -100.0
         # 3. Sinusoidal Ω_star
         # OMEGA_r_mech_star = 100.0 * sin(2 * π * 10 * t)
@@ -249,12 +249,12 @@ function myplot(machine_times, watch_data)
 
     for (index, ylabel) in enumerate(ylabels)
         trace = watch_data[index, :]
-        p = plot(machine_times, trace, xlabel="Time (s)", ylabel=ylabel, title="$ylabel vs Time", legend=false, linewidth=1)
+        p = plot(machine_times, trace, xlabel="Time (s)", ylabel=ylabel, title="$ylabel vs Time", legend=false, linewidth=0.5)
         push!(plots, p)
     end
     
     # Create a layout of 3 rows and 4 columns
-    plot_com = plot(plots..., layout=(4, 4), size=(1200, 800))
-    savefig( plot_com, "plots/motor_plots.svg")
+    plot_motor = plot(plots..., layout=(4, 4), size=(1200, 800))
+    savefig( plot_motor, "plots/motor_plots.svg")
     
 end
